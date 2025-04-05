@@ -1,16 +1,20 @@
-FROM node:16-alpine
+FROM python:3.9-slim
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm install
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt 
+
+# Sprachmodelle installieren in einem separaten Schritt
+RUN pip install --no-cache-dir spacy==3.2.0
+RUN python -m spacy download de_core_news_sm || echo "Modell-Download fehlgeschlagen, wird später im Container erledigt"
+RUN python -c "import nltk; nltk.download('punkt')" || echo "NLTK-Download fehlgeschlagen, wird später im Container erledigt"
 
 COPY . .
 
-# Berechtigungsproblem beheben: Stelle sicher, dass alle Dateien dem node-Benutzer gehören
-RUN chown -R node:node /app
-USER node
+# Erstelle und stelle sicher, dass das Upload-Verzeichnis existiert
+RUN mkdir -p uploads && chmod 775 uploads
 
-EXPOSE 3000
+EXPOSE 5021
 
-CMD ["npm", "start"]
+CMD ["python", "app.py"]
