@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5021:5021"
+    volumes:
+      - ./backend:/app
+      - ./uploads:/app/uploads
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/recipe_db
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+    restart: unless-stopped
+    networks:
+      - recipe-network
+
+  frontend:
+    build: ./frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - recipe-network
+
+  db:
+    image: postgres:13
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=recipe_db
+    restart: unless-stopped
+    networks:
+      - recipe-network
+  
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8085:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks:
+      - recipe-network
+
+volumes:
+  postgres_data:
+
+networks:
+  recipe-network:
+    driver: bridge
