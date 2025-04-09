@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"  # Frontend (React) auf Port 3000
+    depends_on:
+      - backend
+    networks:
+      - recipe-network
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_URL=http://backend:5000/api
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5021:5000"  # Backend (Flask) auf Port 5021
+    depends_on:
+      - db
+      - redis
+    networks:
+      - recipe-network
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/rezept
+      - SECRET_KEY=your_secret_key_here
+      - BACKUP_DIR=/app/backups
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - backend_data:/app/data
+      - backup_data:/app/backups
+
+  db:
+    image: postgres:14-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=rezept
+    networks:
+      - recipe-network
+    restart: unless-stopped
+    ports:
+      - "5433:5432"  # Datenbank (PostgreSQL) auf Port 5433
+
+  redis:
+    image: redis:alpine
+    networks:
+      - recipe-network
+    restart: unless-stopped
+    ports:
+      - "6379:6379"  # Redis auf Port 6379
+
+networks:
+  recipe-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  backend_data:
+  backup_data:
